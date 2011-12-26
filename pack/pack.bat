@@ -149,7 +149,7 @@ pause
 set crane_out=W:\work\android2.3.4\out\target\product\crane-evb\images
 set linux_out=..\..\out
 set TOOLS_DIR=%CD%\pctools\windows
-set PATH=%TOOLS_DIR%\mod_update;%TOOLS_DIR%\fsbuild200;%TOOLS_DIR%\edragonex200;%TOOLS_DIR%\mkbootimg;%PATH%
+set PATH=%TOOLS_DIR%\mod_update;%TOOLS_DIR%\fsbuild200;%TOOLS_DIR%\edragonex200;%PATH%
 echo %linux_out%
 echo %TOOLS_DIR%
 echo %PATH%
@@ -163,13 +163,24 @@ if exist out (
     mkdir out out\bootfs
 )
 
+if exist eFex (
+
+    rmdir /s /q eFex
+    xcopy /q /e chips\sun4i\eFex\* eFex\
+) else (
+
+   xcopy /q /e chips\sun4i\eFex\* eFex\
+)
+
+
+
 if %platform%==linux goto pack_linux
 
 echo pack_crane
 
-xcopy /q /e configs\$PACK_CHIP\$PACK_PLATFORM\default\* out\
-xcopy /q /e configs\$PACK_CHIP\$PACK_PLATFORM\$PACK_BOARD\*.fex out\
-xcopy /q /e configs\$PACK_CHIP\$PACK_PLATFORM\$PACK_BOARD\*.cfg out\ 
+xcopy /q /e chips\$PACK_CHIP\$PACK_PLATFORM\default\* out\
+xcopy /q /e chips\$PACK_CHIP\$PACK_PLATFORM\$PACK_BOARD\*.fex out\
+xcopy /q /e chips\$PACK_CHIP\$PACK_PLATFORM\$PACK_BOARD\*.cfg out\ 
 copy eFex\card\mbr.fex out
 copy eFex\split_xxxx.fex out
 copy eGon\storage_media\nand\boot0.bin out
@@ -219,42 +230,36 @@ goto end_pack
 
 :pack_linux
 echo pack_linux
-echo configs\%chips%\%platform%\default\  configs\%chips%\%platform%\%board%\
-xcopy /q /e configs\%chips%\%platform%\default\*  out\
-xcopy /q /e configs\%chips%\%platform%\%board%\* out\
+echo chips\%chips%\configs\%platform%\default\  chips\%chips%\%platform%\%board%\
+xcopy /q /e chips\%chips%\configs\%platform%\default\*  out\
+xcopy /q /e chips\%chips%\configs\%platform%\%board%\* out\
 
-copy eFex\card\mbr.fex out
-copy eFex\split_xxxx.fex out
-copy eGon\storage_media\nand\boot0.bin out
-copy eGon\storage_media\nand\boot1.bin out
-copy eGon\storage_media\sdcard\boot0.bin out\card_boot0.fex
-copy eGon\storage_media\sdcard\boot1.bin out\card_boot1.fex
-copy wboot\bootfs.ini out
+copy  chips\%chips%\eFex\card\mbr.fex out
+copy  chips\%chips%\eFex\split_xxxx.fex out
+copy  chips\%chips%\eGon\storage_media\nand\boot0.bin out
+copy  chips\%chips%\eGon\storage_media\nand\boot1.bin out
+copy  chips\%chips%\eGon\storage_media\sdcard\boot0.bin out\card_boot0.fex
+copy  chips\%chips%\eGon\storage_media\sdcard\boot1.bin out\card_boot1.fex
+copy  chips\%chips%\wboot\bootfs.ini out
 
 
-copy wboot\diskfs.fex out
-xcopy /q /e wboot\bootfs\* out\bootfs\
+copy  chips\%chips%\wboot\diskfs.fex out
+xcopy /q /e  chips\%chips%\wboot\bootfs\* out\bootfs\
 
 pause
-copy  wboot\diskfs.fex  out
-copy  %linux_out%\rootfs.ext4 out\rootfs.fex
+
+
 
 copy   %linux_out%\u-boot.bin out\bootfs\linux\
-copy   %linux_out%\bImage out\kernel
-copy  %linux_out%\sun4i_rootfs.cpio.gz out\ramdisk.img
+copy   %linux_out%\boot.img out\boot.fex
+copy  %linux_out%\rootfs.ext4 out\rootfs.fex
 	
 	
 	
 cd out
-set IMG_NAME="%platform%-%board%.img"
+set IMG_NAME="%chips%-%platform%-%board%.img"
 echo imagename = %IMG_NAME% >> image.cfg
 echo "" >> image.cfg
-
-
-
-mkbootimg.exe  --kernel kernel --ramdisk ramdisk.img --cmdline "console=ttyS0,115200 init=/init rw  loglevel=9"  --base 0x40000000 -o kernel.fex
-
-
 
 
 script_old.exe  sys_config.fex
@@ -266,11 +271,19 @@ copy sys_config1.bin bootfs\script0.bin
 update_mbr.exe sys_config.bin mbr.fex
 fsbuild.exe "%CD%\bootfs.ini" "%CD%\split_xxxx.fex" 
 
+	
+rename bootfs.fex bootloader.fex
+
+
+u_boot_env_gen.exe env.cfg env.fex
+
+
+
 compile.exe -o image.bin image.cfg
 dragon.exe image.cfg 
 cd ..
-
-
+move out\%chips%-%platform%-%board%.img %chips%-%platform%-%board%.img
+rmdir /s /q eFex
 :end_pack
 echo.
 echo Pack Done!!!
